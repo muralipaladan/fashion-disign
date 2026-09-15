@@ -133,3 +133,10 @@ with col_act:
                     
                     svg_match = re.search(r"<svg[\s\S]*?<\/svg>", output_text)
                     instructions = re.sub(r"```[\s\S]*?
+                    else:
+                        st.error("⚠️ ഡയഗ്രം ജനറേറ്റ് ചെയ്യാൻ കഴിഞ്ഞില്ല.")
+                        
+                    instructions = re.sub(r"```[\s\S]*?```", "", output_text).strip()
+                    if instructions:
+                        with st.expander("✂️ തയ്യൽ നിർദ്ദേശങ്ങൾ (കൂടുതൽ വായിക്കാൻ ക്ലിക്ക് ചെയ്യുക)", expanded=True):
+                            st.markdown(instructions)
