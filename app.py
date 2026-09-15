@@ -7,12 +7,17 @@ st.set_page_config(page_title="AI Dress Pattern Maker", layout="wide")
 st.title("👗 AI Dress Pattern & Cutting Generator")
 st.write("വസ്ത്രത്തിന്റെ ഫോട്ടോ അപ്‌ലോഡ് ചെയ്യുക. AI നിങ്ങൾക്ക് ആവശ്യമായ കട്ടിംഗ് പാറ്റേൺ തയ്യാറാക്കി നൽകും.")
 
-# API Key നൽകാനുള്ള ഓപ്ഷൻ
-api_key = st.sidebar.text_input("നിങ്ങളുടെ Gemini API Key നൽകുക:", type="password")
+# ഡിപ്ലോയ് ചെയ്യുമ്പോൾ API Key സുരക്ഷിതമായി എടുക്കാൻ
+api_key = ""
+try:
+    # Streamlit Secrets-ൽ നിന്നും API Key എടുക്കുന്നു
+    api_key = st.secrets["GEMINI_API_KEY"]
+except:
+    # Secrets ലഭ്യമല്ലെങ്കിൽ സൈഡ്‌ബാറിൽ നൽകാം
+    api_key = st.sidebar.text_input("നിങ്ങളുടെ Gemini API Key നൽകുക:", type="password")
 
 if api_key:
     genai.configure(api_key=api_key)
-    # മികച്ച ഇമേജ് അനാലിസിസിനായി gemini-1.5-pro ഉപയോഗിക്കുന്നു
     model = genai.GenerativeModel('gemini-1.5-pro')
 
     uploaded_file = st.file_uploader("വസ്ത്രത്തിന്റെ ഫോട്ടോ ഇവിടെ അപ്‌ലോഡ് ചെയ്യുക (JPG/PNG)", type=["jpg", "jpeg", "png"])
@@ -23,7 +28,6 @@ if api_key:
 
         if st.button("പാറ്റേൺ ഡ്രോയിംഗ് തയ്യാറാക്കുക"):
             with st.spinner("AI പാറ്റേൺ തയ്യാറാക്കുന്നു... ദയവായി കാത്തിരിക്കുക."):
-                # പാറ്റേൺ നിർമ്മാണത്തിന് മാത്രമുള്ള പ്രോംപ്റ്റ്
                 prompt = """
                 You are an expert AI fashion designer and master pattern maker. 
                 Your ONLY job is to analyze the uploaded dress photo and create a precise pattern drafting guide.
@@ -40,4 +44,4 @@ if api_key:
                 except Exception as e:
                     st.error(f"ഒരു പിശക് സംഭവിച്ചു: {e}")
 else:
-    st.sidebar.warning("ടൂൾ പ്രവർത്തിക്കാൻ ദയവായി API Key നൽകുക.")
+    st.sidebar.warning("ടൂൾ പ്രവർത്തിക്കാൻ ദയവായി API Key നൽകുക അല്ലെങ്കിൽ Streamlit Secrets-ൽ സെറ്റ് ചെയ്യുക.")
