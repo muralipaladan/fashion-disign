@@ -18,7 +18,7 @@ except:
 
 if api_key:
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-1.5-pro')
+    model = genai.GenerativeModel('gemini-2.5-flash')
 
     uploaded_file = st.file_uploader("വസ്ത്രത്തിന്റെ ഫോട്ടോ ഇവിടെ അപ്‌ലോഡ് ചെയ്യുക (JPG/PNG)", type=["jpg", "jpeg", "png"])
 
