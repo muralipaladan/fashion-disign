@@ -22,7 +22,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown('<div class="main-header">✂️ Smart AI Tailor Studio (Pro View)</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Guaranteed Interactive Zoom Layout</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">Beautifully Scaled & Naturally Spaced Layouts</div>', unsafe_allow_html=True)
 
 # --- 2. SIDEBAR & CREDENTIALS ---
 with st.sidebar:
@@ -96,7 +96,7 @@ with col_act:
                 except Exception as e:
                     st.error(f"Analysis failed. Error: {e}")
 
-    # --- STEP 2: GENERATE SVGs & INJECT INTO PYTHON HTML TEMPLATE ---
+    # --- STEP 2: GENERATE BEAUTIFUL SVGs ---
     if st.session_state.analysis_done and st.session_state.dress_data:
         data = st.session_state.dress_data
         
@@ -113,27 +113,29 @@ with col_act:
                     user_measurements[m_name] = st.number_input(m_name, value=float(m_default), step=0.5)
             
             st.markdown("---")
-            submit_btn = st.form_submit_button("✨ ഇന്ററാക്ടീവ് പാറ്റേൺ തയ്യാറാക്കുക")
+            submit_btn = st.form_submit_button("✨ മനോഹരമായ ലേഔട്ട് തയ്യാറാക്കുക")
             
         if submit_btn:
-            with st.spinner("ഡയഗ്രമുകൾ തയ്യാറാക്കുന്നു... (ഇതിന് അല്പം സമയമെടുത്തേക്കാം)"):
+            with st.spinner("അളവുകൾ വെച്ച് മനോഹരമായ ഡയഗ്രമുകൾ തയ്യാറാക്കുന്നു..."):
                 try:
                     meas_str = ", ".join([f"{k}: {v}\"" for k, v in user_measurements.items()])
                     
-                    # PROMPT: ASK ONLY FOR SVG BLOCKS (Reduces AI Load = Prevents Blank Screens)
+                    # PROMPT: BEAUTIFUL, NATURAL SPACING & LARGER SCALE
                     svg_prompt = f"""
-                    You are a Master Pattern Drafter. Draw 4 SEPARATE mathematical SVG cutting diagrams for {data.get('dress_name_en')}.
+                    You are a Master Pattern Drafter and UI/UX Designer. Draw 4 SEPARATE, BEAUTIFUL, and NATURALLY SPACED mathematical SVG cutting diagrams for {data.get('dress_name_en')}.
                     Measurements: {meas_str}
                     
-                    CRITICAL INSTRUCTIONS:
-                    1. Output EXACTLY 4 `<svg>` elements. Do NOT write HTML, JS, or CSS. ONLY SVGs.
-                    2. Draw the Front Bodice, Back Bodice, Sleeve, and Skirt separately.
-                    3. Each SVG must use `<svg viewBox="0 0 1000 1200" xmlns="http://www.w3.org/2000/svg">`.
-                    4. SCALE: 1 Inch = 20 Units. (e.g., 15" = 300 units). Start drawing from x=50, y=50 in EVERY SVG.
-                    5. Include clear text measurements (font-size="22", dx="20") next to the lines.
-                    6. DO NOT use placeholders. You MUST draw the `<path>` elements completely.
-                    
-                    Provide the 4 SVGs sequentially.
+                    CRITICAL INSTRUCTIONS FOR A BEAUTIFUL LAYOUT (NO OVERLAPPING TEXT):
+                    1. Output EXACTLY 4 `<svg>` elements. ONLY SVGs. Do not output anything else.
+                    2. Use `<svg viewBox="0 0 800 1000" xmlns="http://www.w3.org/2000/svg">` for each.
+                    3. SCALE UP: Use 1 Inch = 25 SVG Units. This makes the drawing larger and fills the canvas nicely. Start drawing from roughly x=150, y=150 to center it.
+                    4. NATURAL TEXT SPACING (CRUCIAL): 
+                       - NEVER cluster text in one spot.
+                       - Distribute dimension labels logically around the perimeter of the shape.
+                       - Push text away from the lines using large absolute coordinates or offsets (e.g., if a line is at x=200, put the text at x=100 or x=300).
+                       - Use `font-size="20"` and clear colors (`fill="#1e293b"`).
+                    5. Add a bold, centered Title at the very top of the SVG canvas (`<text x="400" y="60" text-anchor="middle" font-size="26" font-weight="bold">TITLE</text>`).
+                    6. Draw Front Bodice, Back Bodice, Sleeve, and Skirt separately in the 4 SVGs. Use solid black for cut lines, dashed red for seams.
                     """
                     
                     image = Image.open(uploaded_file)
@@ -143,45 +145,41 @@ with col_act:
                     )
                     
                     output_text = svg_response.text
-                    
-                    # പൈത്തൺ ഉപയോഗിച്ച് 4 ചിത്രങ്ങളും വേർതിരിച്ചെടുക്കുന്നു
                     svgs = re.findall(r"<svg[\s\S]*?<\/svg>", output_text, re.IGNORECASE)
                     
                     if len(svgs) > 0:
-                        front_svg = svgs[0] if len(svgs) > 0 else "<svg><text x='50' y='50'>Front Panel Missing</text></svg>"
-                        back_svg = svgs[1] if len(svgs) > 1 else "<svg><text x='50' y='50'>Back Panel Missing</text></svg>"
-                        sleeve_svg = svgs[2] if len(svgs) > 2 else "<svg><text x='50' y='50'>Sleeve Panel Missing</text></svg>"
-                        skirt_svg = svgs[3] if len(svgs) > 3 else "<svg><text x='50' y='50'>Skirt Panel Missing</text></svg>"
+                        front_svg = svgs[0] if len(svgs) > 0 else "<svg><text x='150' y='150'>Front Panel Missing</text></svg>"
+                        back_svg = svgs[1] if len(svgs) > 1 else "<svg><text x='150' y='150'>Back Panel Missing</text></svg>"
+                        sleeve_svg = svgs[2] if len(svgs) > 2 else "<svg><text x='150' y='150'>Sleeve Panel Missing</text></svg>"
+                        skirt_svg = svgs[3] if len(svgs) > 3 else "<svg><text x='150' y='150'>Skirt Panel Missing</text></svg>"
                         
-                        # --- INTERACTIVE HTML TEMPLATE (HARDCODED IN PYTHON) ---
                         interactive_html = f"""
                         <!DOCTYPE html>
                         <html lang="en">
                         <head>
                         <meta charset="UTF-8">
-                        <title>Interactive Smart Pattern</title>
+                        <title>Beautiful Pattern Layout</title>
                         <style>
-                            body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; margin: 0; padding: 20px; }}
-                            .title-main {{ text-align: center; color: #1e293b; margin-bottom: 30px; font-size: 24px; font-weight: bold; }}
-                            .grid-container {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; padding: 10px; }}
-                            .card {{ background: white; border-radius: 12px; padding: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; text-align: center; }}
-                            .card:hover {{ transform: scale(1.02); box-shadow: 0 10px 15px rgba(0,0,0,0.1); border-color: #3b82f6; }}
-                            .card h3 {{ margin: 0 0 15px 0; color: #334155; font-size: 16px; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px; }}
-                            .card svg {{ width: 100%; height: auto; max-height: 350px; pointer-events: none; }}
+                            body {{ font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #f8fafc; margin: 0; padding: 20px; }}
+                            .title-main {{ text-align: center; color: #0f172a; margin-bottom: 30px; font-size: 26px; font-weight: bold; letter-spacing: 0.5px; }}
+                            .grid-container {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 25px; padding: 10px; }}
+                            .card {{ background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; cursor: pointer; transition: all 0.3s ease; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; }}
+                            .card:hover {{ transform: translateY(-5px) scale(1.02); box-shadow: 0 12px 20px rgba(0,0,0,0.1); border-color: #3b82f6; }}
+                            .card h3 {{ margin: 0 0 15px 0; color: #1e293b; font-size: 18px; width: 100%; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; }}
+                            .card svg {{ width: 100%; height: auto; max-height: 400px; pointer-events: none; }}
                             
-                            /* Modal Styling */
-                            .modal {{ display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(15, 23, 42, 0.9); backdrop-filter: blur(5px); }}
-                            .modal-content {{ background-color: white; margin: 2% auto; padding: 20px; border-radius: 12px; width: 90%; max-width: 900px; height: 85%; position: relative; display: flex; flex-direction: column; }}
-                            .close {{ position: absolute; right: 20px; top: 15px; color: #ef4444; font-size: 35px; font-weight: bold; cursor: pointer; line-height: 1; }}
-                            .close:hover {{ color: #b91c1c; }}
-                            .modal-svg-container {{ flex-grow: 1; overflow: auto; display: flex; justify-content: center; align-items: center; background: #f8fafc; border-radius: 8px; margin-top: 15px; border: 1px solid #cbd5e1; }}
-                            .modal-svg-container svg {{ width: 100%; height: 100%; max-height: 700px; }}
-                            .zoom-hint {{ text-align: center; color: #64748b; font-size: 14px; margin-top: 10px; }}
+                            .modal {{ display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(15, 23, 42, 0.95); backdrop-filter: blur(8px); }}
+                            .modal-content {{ background-color: #ffffff; margin: 2% auto; padding: 30px; border-radius: 16px; width: 92%; max-width: 1000px; height: 85%; position: relative; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }}
+                            .close {{ position: absolute; right: 25px; top: 20px; color: #ef4444; font-size: 40px; font-weight: bold; cursor: pointer; line-height: 1; transition: color 0.2s; }}
+                            .close:hover {{ color: #991b1b; }}
+                            .modal-svg-container {{ flex-grow: 1; overflow: hidden; display: flex; justify-content: center; align-items: center; background: #f8fafc; border-radius: 12px; margin-top: 20px; border: 1px solid #cbd5e1; padding: 20px; }}
+                            .modal-svg-container svg {{ width: 100%; height: 100%; object-fit: contain; }}
+                            .zoom-hint {{ text-align: center; color: #64748b; font-size: 15px; margin-top: 15px; font-weight: 500; }}
                         </style>
                         </head>
                         <body>
 
-                        <div class="title-main">✂️ Interactive Pattern Layout (Click on a card to Zoom)</div>
+                        <div class="title-main">✂️ Beautiful Pattern Layout (Click to Expand)</div>
 
                         <div class="grid-container">
                             <div class="card" onclick="openModal(this)">
@@ -193,50 +191,39 @@ with col_act:
                                 {back_svg}
                             </div>
                             <div class="card" onclick="openModal(this)">
-                                <h3>SLEEVE (Cut 2)</h3>
+                                <h3>SLEEVE</h3>
                                 {sleeve_svg}
                             </div>
                             <div class="card" onclick="openModal(this)">
-                                <h3>SKIRT / BOTTOM</h3>
+                                <h3>SKIRT / LOWER</h3>
                                 {skirt_svg}
                             </div>
                         </div>
 
-                        <!-- The Modal -->
                         <div id="myModal" class="modal">
                             <div class="modal-content">
                                 <span class="close" onclick="closeModal()">&times;</span>
-                                <h2 id="modal-title" style="margin:0; color:#1e293b; font-size: 20px;">Pattern View</h2>
+                                <h2 id="modal-title" style="margin:0; color:#0f172a; font-size: 24px; font-weight: bold;">Pattern View</h2>
                                 <div id="modal-body" class="modal-svg-container"></div>
-                                <div class="zoom-hint">Scroll to zoom in/out (if supported by browser)</div>
+                                <div class="zoom-hint">Perfectly Scaled Vector Diagram</div>
                             </div>
                         </div>
 
                         <script>
                             function openModal(cardElement) {{
-                                // Get the title and SVG from the clicked card
                                 const title = cardElement.querySelector('h3').innerText;
                                 const svgCode = cardElement.querySelector('svg').outerHTML;
-                                
-                                // Set them in the modal
-                                document.getElementById('modal-title').innerText = title + " (Detailed View)";
+                                document.getElementById('modal-title').innerText = title + " (Detailed Cut)";
                                 document.getElementById('modal-body').innerHTML = svgCode;
-                                
-                                // Show the modal
                                 document.getElementById('myModal').style.display = 'block';
                             }}
-
                             function closeModal() {{
                                 document.getElementById('myModal').style.display = 'none';
                                 document.getElementById('modal-body').innerHTML = '';
                             }}
-                            
-                            // Close modal when clicking outside the content box
                             window.onclick = function(event) {{
                                 const modal = document.getElementById('myModal');
-                                if (event.target == modal) {{
-                                    closeModal();
-                                }}
+                                if (event.target == modal) {{ closeModal(); }}
                             }}
                         </script>
 
@@ -244,25 +231,23 @@ with col_act:
                         </html>
                         """
                         
-                        st.success("✅ ഇന്ററാക്ടീവ് വ്യൂ തയ്യാർ! താഴെ കാണുന്ന കാർഡുകളിൽ ക്ലിക്ക് ചെയ്ത് സൂം ചെയ്ത് അളവുകൾ കാണാം.")
+                        st.success("✅ മനോഹരമായ ഇന്ററാക്ടീവ് വ്യൂ തയ്യാർ! കാർഡുകളിൽ ക്ലിക്ക് ചെയ്ത് കാണുക.")
                         
-                        # Display inside Streamlit
                         st.components.v1.html(interactive_html, height=750, scrolling=True)
 
-                        # Download File
                         col_dl, col_info = st.columns([1, 1])
                         with col_dl:
                             st.download_button(
-                                label="📥 സിസ്റ്റത്തിൽ സേവ് ചെയ്യുക (Interactive App File)",
+                                label="📥 സിസ്റ്റത്തിൽ സേവ് ചെയ്യുക (Interactive App)",
                                 data=interactive_html,
-                                file_name="Interactive_Tailor_Pattern.html",
+                                file_name="Beautiful_Tailor_Pattern.html",
                                 mime="text/html"
                             )
                         with col_info:
-                            st.info("💡 ഈ ഫയൽ ഡൗൺലോഡ് ചെയ്ത് ഫോൾഡറിൽ സൂക്ഷിക്കാം. ഇന്റർനെറ്റ് ഇല്ലാതെ തന്നെ പിന്നീട് ഉപയോഗിക്കാം.")
+                            st.info("💡 ഫയൽ ഡൗൺലോഡ് ചെയ്ത് ഫോൾഡറിൽ സൂക്ഷിക്കാം. ഇന്റർനെറ്റ് ഇല്ലാതെ തന്നെ പ്രവർത്തിക്കും.")
 
                     else:
-                        st.error("⚠️ ഡയഗ്രം വരയ്ക്കാൻ AI-ക്ക് കഴിഞ്ഞില്ല. ഫോട്ടോ ഒന്നുകൂടി അപ്‌ലോഡ് ചെയ്ത് ശ്രമിക്കുക.")
+                        st.error("⚠️ ഡയഗ്രം വരയ്ക്കാൻ കഴിഞ്ഞില്ല. വീണ്ടും ശ്രമിക്കുക.")
                         
                 except Exception as e:
                     error_msg = str(e)
