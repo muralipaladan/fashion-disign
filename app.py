@@ -1,149 +1,162 @@
 import streamlit as st
 from google import genai
-from google.genai import types
 from PIL import Image
 import re
 
-# പേജ് കോൺഫിഗറേഷൻ (A3 വൈഡ് വ്യൂവിന് അനുയോജ്യമായി)
+# --- 1. MODERN UI CONFIGURATION ---
 st.set_page_config(
-    page_title="AI Tailor Pattern Drafter (A3 Sheet)", 
+    page_title="Smart AI Tailor Studio", 
+    page_icon="✂️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-st.title("✂️ AI ഡ്രസ്സ് കട്ടിംഗ് പാറ്റേൺ ജനറേറ്റർ (A3 ഷീറ്റ് ലേഔട്ട്)")
-st.write("വസ്ത്രത്തിന്റെ ചിത്രവും അളവുകളും നൽകി ഓവർലാപ്പില്ലാത്ത കൃത്യമായ A3 കട്ടിംഗ് ഡയഗ്രം നേടുക.")
+# Custom CSS for modern look
+st.markdown("""
+    <style>
+    .main-header { font-size: 2.5rem; font-weight: 700; color: #1E3A8A; text-align: center; }
+    .sub-header { font-size: 1.1rem; color: #64748B; text-align: center; margin-bottom: 30px; }
+    .stButton>button { width: 100%; border-radius: 8px; height: 50px; font-size: 1.1rem; font-weight: bold; }
+    .svg-container { background-color: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    </style>
+""", unsafe_allow_html=True)
 
-# API കീ ലോഡ് ചെയ്യുന്നു
-api_key = st.secrets.get("GEMINI_API_KEY")
-if not api_key:
-    api_key = st.sidebar.text_input("Gemini API Key നൽകുക", type="password")
+st.markdown('<div class="main-header">✂️ Smart AI Tailor Studio</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">Upload a design & get a precise, foolproof 2D cutting layout</div>', unsafe_allow_html=True)
+
+# --- 2. SIDEBAR & CREDENTIALS ---
+with st.sidebar:
+    st.header("⚙️ Settings & API")
+    api_key = st.secrets.get("GEMINI_API_KEY")
+    if not api_key:
+        api_key = st.text_input("Enter Gemini 2.5 Flash API Key", type="password", help="Get this from Google AI Studio")
+    
+    st.markdown("---")
+    st.header("📏 Body Measurements (Inches)")
+    dress_type = st.selectbox("Garment Type", ["Auto-detect (Smart)", "A-Line Kurti", "Straight Kurti", "Blouse", "Shirt", "Trousers"])
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        shoulder = st.number_input("Shoulder", value=14.0, step=0.5)
+        chest = st.number_input("Chest/Bust", value=36.0, step=0.5)
+        waist = st.number_input("Waist", value=32.0, step=0.5)
+        hip = st.number_input("Hip", value=38.0, step=0.5)
+    with col2:
+        top_len = st.number_input("Top Length", value=15.0, step=0.5)
+        full_len = st.number_input("Full Length", value=42.0, step=0.5)
+        sleeve_len = st.number_input("Sleeve Length", value=16.0, step=0.5)
+        armhole = st.number_input("Armhole", value=16.0, step=0.5)
 
 if not api_key:
-    st.warning("തുടരാൻ ദയവായി നിങ്ങളുടെ Gemini API Key നൽകുക.")
+    st.info("👋 Welcome! Please enter your Gemini API Key in the sidebar to start generating patterns.")
     st.stop()
 
-# Gemini 2.5 Flash ക്ലയന്റ് കോൺഫിഗറേഷൻ
 client = genai.Client(api_key=api_key)
 
-# സൈഡ്‌ബാർ - അളവുകൾ
-st.sidebar.header("📏 ശരീര അളവുകൾ (Inches)")
-dress_type = st.sidebar.selectbox(
-    "വസ്ത്രത്തിന്റെ തരം", 
-    ["Auto-detect from Photo", "Kurti / Kameez", "Frock / Anarkali", "Blouse", "Shirt", "Pants / Trouser"]
-)
+# --- 3. MAIN WORKSPACE (TABS) ---
+tab1, tab2 = st.tabs(["🖼️ Design Upload & Generation", "📖 How to use this tool"])
 
-col_s1, col_s2 = st.sidebar.columns(2)
-with col_s1:
-    shoulder = st.number_input("Shoulder Width", value=14.0, step=0.5)
-    chest = st.number_input("Chest / Bust", value=36.0, step=0.5)
-    waist = st.number_input("Waist", value=32.0, step=0.5)
-    hip = st.number_input("Hip", value=38.0, step=0.5)
-
-with col_s2:
-    bodice_len = st.number_input("Bodice / Top Length", value=15.0, step=0.5)
-    full_length = st.number_input("Full Length", value=42.0, step=0.5)
-    sleeve_length = st.number_input("Sleeve Length", value=16.0, step=0.5)
-    armhole = st.number_input("Armhole Round", value=16.0, step=0.5)
-
-# പ്രധാന വിൻഡോ - ചിത്രം അപ്‌ലോഡ്
-uploaded_file = st.file_uploader("വസ്ത്രത്തിന്റെ ഡിസൈൻ ഫോട്ടോ അപ്‌ലോഡ് ചെയ്യുക", type=["jpg", "jpeg", "png"])
-
-if uploaded_file:
-    image = Image.open(uploaded_file)
-    st.image(image, caption="അപ്‌ലോഡ് ചെയ്ത മോഡൽ", width=260)
-
-if st.button("✂️ A3 കട്ടിംഗ് പാറ്റേൺ തയ്യാറാക്കുക", type="primary"):
-    if not uploaded_file:
-        st.error("ദയവായി ഒരു ഡ്രസ്സ് ഫോട്ടോ അപ്‌ലോഡ് ചെയ്യുക.")
-        st.stop()
-
-    with st.spinner("Gemini 2.5 Flash A3 ഷീറ്റിലേക്ക് ഓവർലാപ്പില്ലാത്ത ലേഔട്ട് തയ്യാറാക്കുന്നു..."):
-        try:
-            # കൃത്യമായ A3 ഗ്രിഡ് പ്ലാനിംഗ് നൽകുന്ന എൻജിനീയറിംഗ് പ്രോംപ്റ്റ്
-            prompt = f"""
-            You are a professional Master Pattern Drafter and Vector CAD Designer.
-            Analyze the uploaded dress photo and draft a complete, clean, NON-OVERLAPPING sewing cutting diagram inside an A3 LANDSCAPE sheet format.
-
-            INPUT MEASUREMENTS (Inches):
-            - Dress Type: {dress_type}
-            - Shoulder Width: {shoulder}" (Half: {shoulder/2}")
-            - Chest/Bust: {chest}" (Quarter: {chest/4}" + Ease 1.5" = {chest/4 + 1.5}")
-            - Waist: {waist}" (Quarter: {waist/4}" + Ease 1.5" = {waist/4 + 1.5}")
-            - Hip: {hip}" (Quarter: {hip/4}" + Ease 1.5" = {hip/4 + 1.5}")
-            - Top/Bodice Length: {bodice_len}" (+ Seam Allowance 1.5" = {bodice_len + 1.5}")
-            - Full Length: {full_length}"
-            - Sleeve Length: {sleeve_length}" (+ Hem fold 1.5" = {sleeve_length + 1.5}")
-            - Armhole: {armhole}"
-
-            CRITICAL A3 CANVAS & NON-OVERLAPPING GRID RULES:
-            1. Canvas: SVG viewBox="0 0 1400 950" with a crisp white background (#ffffff) and subtle border.
-            2. The sheet is divided strictly into 4 SEPARATE, NON-INTERSECTING PANELS across the page:
-               - PANEL 1 (x: 40 to 350, y: 80 to 750): FRONT BODICE. Left edge is the FOLD LINE (bold green dashed stroke).
-               - PANEL 2 (x: 380 to 690, y: 80 to 750): BACK BODICE. Left edge is FOLD LINE (bold green dashed stroke).
-               - PANEL 3 (x: 720 to 1030, y: 80 to 750): SLEEVE BLOCK (Cut 2). Center vertical line marked as grain/fold.
-               - PANEL 4 (x: 1060 to 1370, y: 80 to 750): SKIRT FLARE / LOWER PANEL (Cut on fold).
-            3. STRICT CONSTRAINT: NO element or path from one panel must ever cross into another panel's X coordinates.
-            4. VISUAL STYLES:
-               - Cutting Edge: Solid Dark Slate Line (#0f172a, stroke-width 2.5)
-               - Stitching Line (Inner Seam Margin): Red Dashed Line (#dc2626, stroke-dasharray="5,4", stroke-width 1.5)
-               - Fold / Grain Line: Green Dashed Line (#16a34a, stroke-width 2.5)
-               - Dimension Markers: Thin arrows (#475569) with clear numerical labels in inches.
-            5. Clear title tags above each panel: e.g., '1. FRONT BODICE (Cut 1 on fold)'.
-            6. Bottom Legend Area (y: 800 to 920): Fabric spreading table details, seam allowance guide (1.5" side seam, 0.5" neck/armhole, 1.5" hem fold).
-
-            OUTPUT:
-            1. Standalone valid SVG code starting with `<svg viewBox="0 0 1400 950"` wrapped in ```xml ... ```.
-            2. Step-by-step cutting instructions in Malayalam explaining how to fold the fabric and cut each piece safely.
-            """
-
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=[prompt, image]
-            )
-            output_text = response.text
-
-            # SVG വേർതിരിച്ചെടുക്കുന്നു
-            svg_match = re.search(r"<svg[\s\S]*?<\/svg>", output_text)
-
-            if svg_match:
-                svg_code = svg_match.group(0)
-                
-                # വെളുത്ത ബാക്ക്‌ഗ്രൗണ്ട് പൂർണ്ണമായി ഉറപ്പാക്കുന്നു
-                if 'style="background' not in svg_code:
-                    svg_code = svg_code.replace('<svg', '<svg style="background-color: #ffffff; border-radius: 8px;"', 1)
-
-                st.subheader("📐 A3 പ്രിന്റബിൾ കട്ടിംഗ് പാറ്റേൺ ലേഔട്ട്")
-                
-                # വിസ്താരമുള്ള A3 കാൻവാസ് ഡിസ്‌പ്ലേ
-                st.components.v1.html(
-                    f"""
-                    <div style="width: 100%; overflow-x: auto; background-color: #f1f5f9; padding: 15px; border-radius: 10px;">
-                        {svg_code}
-                    </div>
-                    """, 
-                    height=780, 
-                    scrolling=True
-                )
-
-                # A3 SVG ഡൗൺലോഡ് ബട്ടൺ
-                col_d1, col_d2 = st.columns([1, 4])
-                with col_d1:
-                    st.download_button(
-                        label="📥 A3 പാറ്റേൺ ഡൗൺലോഡ് ചെയ്യുക (SVG)",
-                        data=svg_code,
-                        file_name="A3_Tailor_Cutting_Pattern.svg",
-                        mime="image/svg+xml"
-                    )
-
+with tab1:
+    col_img, col_act = st.columns([1, 2])
+    
+    with col_img:
+        st.markdown("### 1. Upload Design")
+        uploaded_file = st.file_uploader("Drop your dress photo here", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
+        if uploaded_file:
+            image = Image.open(uploaded_file)
+            st.image(image, caption="Target Design", use_container_width=True)
+            
+    with col_act:
+        st.markdown("### 2. Generate Pattern")
+        if st.button("🚀 Analyze & Generate AI Pattern", type="primary"):
+            if not uploaded_file:
+                st.error("⚠️ Please upload a dress image first.")
             else:
-                st.warning("SVG കോഡ് വേർതിരിച്ചെടുക്കാൻ കഴിഞ്ഞില്ല. ലഭിച്ച മറുപടി താഴെ നൽകുന്നു:")
-                st.code(output_text)
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                
+                status_text.text("🔍 Analyzing design and fabric ease...")
+                progress_bar.progress(30)
+                
+                try:
+                    # STRICT FOOLPROOF PROMPT
+                    prompt = f"""
+                    You are a highly precise Vector CAD Engine for tailoring.
+                    Generate a COMPLETE and STRICTLY NON-OVERLAPPING SVG cutting layout.
 
-            # മലയാളത്തിലുള്ള നിർദ്ദേശങ്ങൾ
-            st.subheader("📝 കട്ടിംഗ് & തയ്യൽ നിർദ്ദേശങ്ങൾ (Cutting Guide)")
-            instructions = re.sub(r"```[\s\S]*?```", "", output_text).strip()
-            st.markdown(instructions)
+                    Inputs:
+                    - Type: {dress_type}
+                    - Measurements: Shoulder {shoulder}", Chest {chest}", Waist {waist}", Hip {hip}", Bodice {top_len}", Total Length {full_len}", Sleeve {sleeve_len}".
 
-        except Exception as e:
-            st.error(f"പ്രശ്നം സംഭവിച്ചു: {e}")
+                    SVG STRUCTURE RULES (MUST FOLLOW STRICTLY):
+                    1. Use `<svg viewBox="0 0 1600 900" xmlns="http://www.w3.org/2000/svg" style="background:#ffffff; font-family:sans-serif;">`
+                    2. Divide the canvas into 4 FIXED bounding boxes. NO path should exceed its box.
+                       - Box 1 (Front): X from 50 to 400
+                       - Box 2 (Back): X from 450 to 800
+                       - Box 3 (Sleeve): X from 850 to 1200
+                       - Box 4 (Skirt/Bottom): X from 1250 to 1550
+                    3. For each part:
+                       - Draw a dashed green line on the left edge denoting "FOLD LINE".
+                       - Draw the solid black cutting line (include 1.5" seam allowance).
+                       - Draw a red dashed inner stitching line.
+                       - Add text labels showing calculated dimensions (e.g., Chest/4 + 1.5).
+                    4. Add a title at the top of each box (e.g., "FRONT (Cut 1 on Fold)").
+                    5. Output ONLY the raw SVG code inside an xml codeblock. Do not add any conversational text before or after the SVG. Add Malayalam cutting instructions below the SVG inside a markdown block.
+                    """
+                    
+                    status_text.text("📐 Drafting geometric vector paths...")
+                    progress_bar.progress(60)
+
+                    response = client.models.generate_content(
+                        model="gemini-2.5-flash",
+                        contents=[prompt, image]
+                    )
+                    
+                    status_text.text("✨ Finalizing layout...")
+                    progress_bar.progress(90)
+                    
+                    output_text = response.text
+                    svg_match = re.search(r"<svg[\s\S]*?<\/svg>", output_text)
+                    
+                    progress_bar.progress(100)
+                    status_text.empty()
+                    progress_bar.empty()
+
+                    if svg_match:
+                        svg_code = svg_match.group(0)
+                        
+                        st.success("✅ Pattern generated successfully!")
+                        st.markdown('<div class="svg-container">', unsafe_allow_html=True)
+                        st.components.v1.html(svg_code, height=750, scrolling=True)
+                        st.markdown('</div>', unsafe_allow_html=True)
+
+                        st.download_button(
+                            label="📥 Download HD Pattern (SVG)",
+                            data=svg_code,
+                            file_name="Smart_Tailor_Pattern.svg",
+                            mime="image/svg+xml"
+                        )
+                    else:
+                        st.error("⚠️ Failed to generate precise geometry. Try again.")
+                        with st.expander("Show AI Raw Output"):
+                            st.code(output_text)
+
+                    # Instructions
+                    instructions = re.sub(r"```[\s\S]*?```", "", output_text).strip()
+                    if instructions:
+                        with st.expander("✂️ Malayalam Cutting Instructions (Click to expand)", expanded=True):
+                            st.markdown(instructions)
+
+                except Exception as e:
+                    st.error(f"An error occurred: {e}")
+
+with tab2:
+    st.markdown("""
+    ### എങ്ങനെ ഉപയോഗിക്കാം?
+    1. **API Key നൽകുക:** ഇടതുവശത്ത് നിങ്ങളുടെ Google Gemini API Key നൽകുക.
+    2. **അളവുകൾ നൽകുക:** തയ്ക്കാൻ ഉദ്ദേശിക്കുന്ന വ്യക്തിയുടെ കൃത്യമായ അളവുകൾ ഇൻപുട്ട് ചെയ്യുക.
+    3. **ഫോട്ടോ അപ്‌ലോഡ് ചെയ്യുക:** ഏതുതരം വസ്ത്രമാണോ തയ്ക്കേണ്ടത്, അതിന്റെ ഫോട്ടോ അപ്‌ലോഡ് ചെയ്യുക.
+    4. **Generate ബട്ടൺ അമർത്തുക:** AI കൃത്യമായ കണക്കുകൂട്ടലുകൾ നടത്തി ഓവർലാപ്പ് ഇല്ലാത്ത കട്ടിംഗ് ലേഔട്ട് നിർമ്മിച്ചു നൽകും.
+    
+    *പ്രത്യേക ശ്രദ്ധയ്ക്ക്:* സീം അലവൻസ് (തയ്യൽതുമ്പ് - 1.5 ഇഞ്ച്) ഉൾപ്പെടെയുള്ള അളവുകളാണ് ഡയഗ്രമിൽ കാണിക്കുക.
+    """)
