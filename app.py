@@ -19,12 +19,12 @@ st.markdown("""
     .sub-header { font-size: 1rem; color: #64748B; text-align: center; margin-bottom: 30px; }
     .stButton>button { width: 100%; border-radius: 8px; height: 45px; font-weight: bold; }
     .fabric-badge { background-color: #dcfce7; color: #166534; padding: 10px 15px; border-radius: 8px; font-weight: bold; text-align: center; font-size: 1.1rem; border: 1px solid #bbf7d0; margin-bottom: 20px;}
-    .svg-container { background-color: white; border-radius: 12px; padding: 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 20px; overflow: hidden;}
+    .svg-container { background-color: white; border-radius: 12px; padding: 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 20px; overflow: hidden; border: 1px solid #e2e8f0;}
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="main-header">✂️ Smart AI Tailor Studio (Pro Version)</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">2-Step AI: Accurate Dimension Marking & PDF Ready Output</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header">✂️ Smart AI Tailor Studio (Pro A3 Version)</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">Perfectly Scaled A3 Print-Ready Cutting Patterns</div>', unsafe_allow_html=True)
 
 # --- 2. SIDEBAR & CREDENTIALS ---
 with st.sidebar:
@@ -77,12 +77,12 @@ with col_act:
                 try:
                     analysis_prompt = """
                     Analyze the uploaded dress photo. Identify the dress type, estimate the fabric required (in meters), and list the STANDARD basic measurements required to stitch this specific dress.
-                    Return ONLY a valid JSON object. No markdown, no extra text.
+                    Return ONLY a valid JSON object.
                     {
                         "dress_name_ml": "വസ്ത്രത്തിന്റെ പേര്",
                         "dress_name_en": "Dress Name",
                         "estimated_fabric": "2.5 മീറ്റർ",
-                        "measurements_needed": { "Shoulder": 14.0, "Chest": 36.0, "Waist": 32.0, "Length": 40.0 }
+                        "measurements_needed": { "Shoulder": 14.0, "Chest": 36.0, "Waist": 32.0, "Length": 40.0, "Armhole": 16.0 }
                     }
                     """
                     response = client.models.generate_content(
@@ -98,7 +98,7 @@ with col_act:
                 except Exception as e:
                     st.error(f"Analysis failed. Error: {e}")
 
-    # --- STEP 2: SHOW DYNAMIC FORM & GENERATE PDF-READY PATTERN ---
+    # --- STEP 2: SHOW DYNAMIC FORM & GENERATE PERFECT A3 SCALED PATTERN ---
     if st.session_state.analysis_done and st.session_state.dress_data:
         data = st.session_state.dress_data
         
@@ -115,27 +115,35 @@ with col_act:
                     user_measurements[m_name] = st.number_input(m_name, value=float(m_default), step=0.5)
             
             st.markdown("---")
-            submit_btn = st.form_submit_button("✂️ Smart Pattern തയ്യാറാക്കുക (With Dimensions)")
+            submit_btn = st.form_submit_button("✂️ Generate Perfect A3 Scaled Pattern")
             
         if submit_btn:
-            with st.spinner("കൃത്യമായ അളവുകൾ രേഖപ്പെടുത്തിയ ഡയഗ്രം തയ്യാറാക്കുന്നു..."):
+            with st.spinner("കൃത്യമായ സ്കെയിലിൽ A3 ലേഔട്ട് വരയ്ക്കുന്നു... (ഇതിന് അല്പം സമയമെടുത്തേക്കാം)"):
                 try:
                     meas_str = ", ".join([f"{k}: {v}\"" for k, v in user_measurements.items()])
                     
-                    # STRICT PROMPT FOR MEASUREMENTS AND HTML
+                    # STRICT MATHEMATICAL PROMPT FOR A3 SCALE
                     svg_prompt = f"""
-                    You are a precise Master Tailor and Vector CAD Engine. Generate a fully marked, Print-Ready cutting layout for a {data.get('dress_name_en')}.
+                    You are a Master Pattern Drafter producing a strict mathematical CAD vector drawing.
+                    Draft a Print-Ready A3 Landscape sewing pattern for: {data.get('dress_name_en')}.
                     Measurements: {meas_str}
                     
-                    CRITICAL REQUIREMENTS (DO NOT IGNORE):
-                    1. NON-OVERLAPPING PANELS: Draw Front, Back, Sleeves, etc., in separate X-coordinate spaces so they NEVER overlap.
-                    2. DIMENSION LABELS: EVERY SINGLE EDGE (shoulder, armhole, chest width, waist, bottom, full length) MUST have a text label showing its exact calculated measurement in inches (e.g., 'Chest: 10.5"', 'Shoulder: 7"').
-                    3. DIMENSION LINES: Draw thin lines/arrows pointing to the edges to show what the measurement refers to.
-                    4. SEAM ALLOWANCE: Show stitching lines in red dashed strokes and include 1.5" seam allowance in calculations.
-                    5. FOLD LINES: Mark "On Fold" clearly with green dashed lines.
-                    6. OUTPUT FORMAT: Generate a complete HTML document (starting with `<!DOCTYPE html>`) that includes the SVG (viewBox="0 0 1600 1200") and a CSS `@media print` query setting the page to Landscape. 
+                    CRITICAL MATHEMATICAL SCALING & LAYOUT RULES:
+                    1. HTML & SVG SIZE: Use an A3 Landscape HTML template. The SVG must be `<svg viewBox="0 0 1600 1100" width="100%" height="100%" style="background:#ffffff; font-family: Arial, sans-serif;">`.
+                    2. SCALE FACTOR: 1 Inch = 20 SVG units. 
+                       - Example: If Top Length is 15", draw it 300 units long (15 * 20).
+                       - Example: If Shoulder half is 7", draw it 140 units wide (7 * 20).
+                       You MUST mathematically apply this 1:20 multiplier to ALL drawing paths (d="M...").
+                    3. TEXT SIZE: Set `font-size="16"` for measurements and `font-size="22"` for titles. NEVER use massive text. Position text beautifully next to the lines.
+                    4. GRID PLACEMENT (NO OVERLAPPING):
+                       Draw the parts starting at these exact origin coordinates to ensure they are spaced out across the A3 sheet:
+                       - FRONT BODICE starts at X=100, Y=100. (Fold line goes down along X=100)
+                       - BACK BODICE starts at X=500, Y=100. (Fold line goes down along X=500)
+                       - SLEEVE starts at X=900, Y=100.
+                       - SKIRT / FLARE starts at X=1200, Y=100.
+                    5. Include cutting lines (solid black #000, 2px), sewing lines (dashed red #d32f2f, 1.5px), and Fold lines (dashed green #2e7d32, 3px). Add explicit text labels (e.g., 'Chest: 10.5"').
                     
-                    Output ONLY the raw HTML code inside an `html` code block. No explanations before or after.
+                    Output ONLY the valid HTML code starting with `<!DOCTYPE html>` inside an `html` code block.
                     """
                     
                     image = Image.open(uploaded_file)
@@ -148,29 +156,26 @@ with col_act:
                     html_match = re.search(r"```html\s*(<!DOCTYPE html>[\s\S]*?)```", output_text, re.IGNORECASE)
                     
                     if not html_match:
-                        # Fallback if AI didn't use markdown block properly
                         html_match = re.search(r"(<!DOCTYPE html>[\s\S]*?</html>)", output_text, re.IGNORECASE)
 
                     if html_match:
                         html_code = html_match.group(1)
-                        st.success("✅ അളവുകൾ അടയാളപ്പെടുത്തിയ പാറ്റേൺ തയ്യാർ!")
+                        st.success("✅ Perfect A3 പാറ്റേൺ തയ്യാർ! ഡൗൺലോഡ് ചെയ്ത് പ്രിന്റ് ചെയ്യാം.")
                         
-                        # Displaying the generated HTML/SVG
                         st.markdown('<div class="svg-container">', unsafe_allow_html=True)
-                        st.components.v1.html(html_code, height=800, scrolling=True)
+                        st.components.v1.html(html_code, height=850, scrolling=True)
                         st.markdown('</div>', unsafe_allow_html=True)
 
-                        # Provide HTML file for downloading (Which can be easily printed as PDF)
                         col_dl, col_info = st.columns([1, 1])
                         with col_dl:
                             st.download_button(
-                                label="📥 Download Print-Ready Pattern (HTML/PDF format)",
+                                label="📥 Download A3 Pattern (HTML/PDF format)",
                                 data=html_code,
-                                file_name="Smart_Tailor_Pattern.html",
+                                file_name="A3_Smart_Tailor_Pattern.html",
                                 mime="text/html"
                             )
                         with col_info:
-                            st.info("💡 ഡൗൺലോഡ് ചെയ്ത ഫയൽ ബ്രൗസറിൽ ഓപ്പൺ ചെയ്ത് `Ctrl + P` (അല്ലെങ്കിൽ Print) നൽകിയാൽ കൃത്യമായ PDF ആയി സേവ് ചെയ്യാം.")
+                            st.info("💡 ഡൗൺലോഡ് ചെയ്ത ഫയൽ ബ്രൗസറിൽ ഓപ്പൺ ചെയ്ത് `Print -> Paper Size: A3 -> Landscape` നൽകി സേവ് ചെയ്യാം.")
 
                     else:
                         st.error("⚠️ ഡയഗ്രം ജനറേറ്റ് ചെയ്യാൻ കഴിഞ്ഞില്ല. ദയവായി വീണ്ടും ശ്രമിക്കുക.")
