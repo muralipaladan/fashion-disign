@@ -1,11 +1,12 @@
 import streamlit as st
 import google.generativeai as genai
 from PIL import Image
+import re
 
 # പേജ് സജ്ജീകരണം
 st.set_page_config(page_title="AI Dress Pattern Maker", layout="wide")
 st.title("👗 Custom AI Dress Pattern Maker")
-st.write("വസ്ത്രത്തിന്റെ ഫോട്ടോ അപ്‌ലോഡ് ചെയ്യുക. ഇതിന് ആവശ്യമായ അളവുകൾ AI നിങ്ങളോട് ചോദിക്കുന്നതാണ്.")
+st.write("വസ്ത്രത്തിന്റെ ഫോട്ടോ അപ്‌ലോഡ് ചെയ്യുക. ഇതിന് ആവശ്യമായ അളവുകൾ നൽകിയാൽ മലയാളത്തിൽ നിർദ്ദേശങ്ങളും കട്ടിംഗ് പാറ്റേണും ലഭിക്കും.")
 
 # വിവരങ്ങൾ സൂക്ഷിച്ചു വെക്കാൻ (Session State)
 if 'needed_measurements' not in st.session_state:
@@ -65,18 +66,40 @@ if api_key:
                     I have uploaded a dress photo and here are the user's specific body measurements: {measurements_text}.
                     
                     Your ONLY job is to create a precise pattern drafting guide based on these EXACT measurements.
+                    
+                    CRITICAL INSTRUCTION: All textual responses, including the Pattern Pieces List and Cutting & Stitching Instructions, MUST be entirely in Malayalam language (Malayalam script). Do not use Manglish.
+                    
                     Please provide:
-                    1. Pattern Pieces List: All 2D fabric pieces required.
-                    2. Cutting & Stitching Instructions: Step-by-step tailoring guide customized to the provided measurements. Explain how much fabric to cut.
-                    3. Pattern Drawing (SVG): Generate clean SVG code representing the 2D flat pattern shapes for cutting this exact dress. 
-                       IMPORTANT: Incorporate the user's measurements directly into the SVG drawing as text labels on the pattern pieces. Wrap the SVG code in ```xml ... ``` block.
+                    1. പാറ്റേൺ പീസുകളുടെ ലിസ്റ്റ് (Pattern Pieces List): All 2D fabric pieces required, explained in Malayalam.
+                    2. കട്ടിംഗ് & തയ്യൽ നിർദ്ദേശങ്ങൾ (Cutting & Stitching Instructions): Step-by-step tailoring guide customized to the provided measurements, completely in Malayalam. Explain how much fabric to cut.
+                    3. പാറ്റേൺ ഡ്രോയിംഗ് (SVG): Generate clean SVG code representing the 2D flat pattern shapes for cutting this exact dress. 
+                       Incorporate the user's measurements directly into the SVG drawing as text labels. Wrap the SVG code in ```xml ... ``` block.
                     
                     Do not discuss anything outside of dressmaking, stitching, and pattern drafting.
                     """
                     try:
                         response2 = model.generate_content([prompt2, image])
+                        response_text = response2.text
+                        
                         st.subheader("നിങ്ങളുടെ അളവുകൾ പ്രകാരമുള്ള കട്ടിംഗ് നിർദ്ദേശങ്ങളും പാറ്റേൺ ഡ്രോയിംഗും:")
-                        st.markdown(response2.text)
+                        st.markdown(response_text)
+                        
+                        # ടെക്സ്റ്റിൽ നിന്നും SVG കോഡ് മാത്രം കണ്ടെത്തി വേർതിരിക്കുന്നു
+                        svg_match = re.search(r'(<svg.*?</svg>)', response_text, re.DOTALL | re.IGNORECASE)
+                        if svg_match:
+                            svg_content = svg_match.group(1)
+                            st.success("SVG പാറ്റേൺ തയ്യാറാണ്!")
+                            
+                            # SVG ഡൗൺലോഡ് ചെയ്യാനുള്ള ബട്ടൺ
+                            st.download_button(
+                                label="📥 പാറ്റേൺ ഡ്രോയിംഗ് ഡൗൺലോഡ് ചെയ്യുക (Download SVG)",
+                                data=svg_content,
+                                file_name="dress_pattern.svg",
+                                mime="image/svg+xml"
+                            )
+                        else:
+                            st.warning("ഡൗൺലോഡ് ചെയ്യാനുള്ള SVG ഫയൽ കണ്ടെത്താനായില്ല.")
+                            
                     except Exception as e:
                         st.error(f"ഒരു പിശക് സംഭവിച്ചു: {e}")
 else:
